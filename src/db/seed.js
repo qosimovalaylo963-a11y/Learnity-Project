@@ -10,8 +10,8 @@
  * 4. Owner account provisioned from environment variables (`OWNER_EMAIL`,
  *    `OWNER_PASSWORD`, `OWNER_NAME`).
  */
-const { hashPassword, hashInviteCode, generateApplicationUid } = require('../utils/crypto');
-const { DEFAULT_TEMPLATES } = require('../utils/mailer');
+const { hashPassword, hashInviteCode, generateApplicationUid } = (() => { try { return require('../utils/crypto'); } catch(_) { return require('./crypto'); } })();
+const { DEFAULT_TEMPLATES } = (() => { try { return require('../utils/mailer'); } catch(_) { return require('./mailer'); } })();
 
 const ORIGINAL_HERO_PHOTO = {
     card_key: 'hero-main',

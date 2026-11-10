@@ -21,8 +21,8 @@ const {
     generateRawInviteCode,
     generateSessionToken,
     generateApplicationUid
-} = require('../utils/crypto');
-const { sendEmailNotification } = require('../utils/mailer');
+} = (() => { try { return require('../utils/crypto'); } catch(_) { return require('./crypto'); } })();
+const { sendEmailNotification } = (() => { try { return require('../utils/mailer'); } catch(_) { return require('./mailer'); } })();
 const {
     SESSION_COOKIE_NAME,
     SESSION_TTL_MS,
@@ -36,7 +36,7 @@ const {
     readRequestBody,
     parseMultipart,
     validateAndSaveUploadedFile
-} = require('../middleware/security');
+} = (() => { try { return require('../middleware/security'); } catch(_) { return require('./security'); } })();
 
 function sendJson(res, status, data, extraHeaders = {}) {
     const body = JSON.stringify(data);

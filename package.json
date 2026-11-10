@@ -4,7 +4,7 @@
   "description": "LEARNITY — The Lively Teaching Project: Full-Stack Interactive Educational Ecosystem with Role-Based Access, Two-Way Registration, Cryptographic Invitations, Subject Learning Hubs, and Persistent Media Library.",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node -e \"require(require('fs').existsSync('./src/server.js')?'./src/server.js':'./server.js')\"",
     "dev": "node src/server.js",
     "migrate": "node -e \"const {SqliteDatabase}=require('./src/db/database');const {runMigrations}=require('./src/db/migrations');(async()=>{const db=new SqliteDatabase('./data/learnity.sqlite');await runMigrations(db);await db.close();console.log('Migrations complete.');})()\"",
     "seed": "node -e \"const {SqliteDatabase}=require('./src/db/database');const {runMigrations}=require('./src/db/migrations');const {seedDatabase}=require('./src/db/seed');(async()=>{const db=new SqliteDatabase('./data/learnity.sqlite');await runMigrations(db);await seedDatabase(db);await db.close();console.log('Seed complete.');})()\"",

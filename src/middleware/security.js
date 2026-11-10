@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { hashSessionToken } = require('../utils/crypto');
+const { hashSessionToken } = (() => { try { return require('../utils/crypto'); } catch(_) { return require('./crypto'); } })();
 
 const SESSION_COOKIE_NAME = 'learnity_sid';
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days

@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 /**
  * LEARNITY — The Lively Teaching Project
- * Production Full-Stack Server (Node.js + Persistent SQLite + Static & SPA Route Support)
+ * Production Full-Stack Server (Node.js + Persistent DB + Automatic Flat/Nested Layout Detection)
  */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { SqliteDatabase } = require('./db/database');
-const { runMigrations } = require('./db/migrations');
-const { seedDatabase } = require('./db/seed');
-const { handleApiRequest } = require('./routes/api');
+
+function requireFlexible(nestedRel, flatRel) {
+    try {
+        return require(nestedRel);
+    } catch (_) {
+        return require(flatRel);
+    }
+}
+
+const { SqliteDatabase } = requireFlexible('./db/database', './database');
+const { runMigrations } = requireFlexible('./db/migrations', './migrations');
+const { seedDatabase } = requireFlexible('./db/seed', './seed');
+const { handleApiRequest } = requireFlexible('./routes/api', './api');
 
 // Load .env if present
 function loadDotEnv(envPath) {
@@ -29,7 +38,9 @@ function loadDotEnv(envPath) {
     });
 }
 
-loadDotEnv(path.join(__dirname, '..', '.env'));
+const isNested = path.basename(__dirname) === 'src';
+const defaultRootDir = isNested ? path.join(__dirname, '..') : __dirname;
+loadDotEnv(path.join(defaultRootDir, '.env'));
 
 const MIME_MAP = {
     '.html': 'text/html; charset=utf-8',
@@ -47,12 +58,16 @@ const MIME_MAP = {
 };
 
 async function createLearnityServer(options = {}) {
-    const rootDir = options.rootDir || path.join(__dirname, '..');
+    const rootDir = options.rootDir || defaultRootDir;
     const dataDir = options.dataDir || process.env.DATA_DIR || path.join(rootDir, 'data');
     const dbPath = options.dbPath || process.env.DB_PATH || path.join(dataDir, 'learnity.sqlite');
     const uploadDir = options.uploadDir || process.env.UPLOAD_DIR || path.join(dataDir, 'uploads');
     const backupDir = options.backupDir || path.join(dataDir, 'backups');
-    const publicDir = options.publicDir || path.join(rootDir, 'public');
+    const publicDir =
+        options.publicDir ||
+        (fs.existsSync(path.join(rootDir, 'public', 'index.html'))
+            ? path.join(rootDir, 'public')
+            : rootDir);
 
     fs.mkdirSync(uploadDir, { recursive: true });
     fs.mkdirSync(backupDir, { recursive: true });
@@ -87,12 +102,24 @@ async function createLearnityServer(options = {}) {
             return res.end(JSON.stringify({ error: 'Uploaded file not found' }));
         }
 
-        // 3. Static Files in `public/`
-        const candidatePath = path.join(publicDir, pathname === '/' ? 'index.html' : pathname);
+        // 3. Static Files in `public/` (or rootDir if uploaded flat)
+        if (pathname === '/' || pathname === '/index.html') {
+            const indexHtml = path.join(publicDir, 'index.html');
+            if (fs.existsSync(indexHtml)) {
+                res.writeHead(200, {
+                    'Content-Type': 'text/html; charset=utf-8',
+                    'X-Content-Type-Options': 'nosniff'
+                });
+                return fs.createReadStream(indexHtml).pipe(res);
+            }
+        }
+
+        const candidatePath = path.join(publicDir, pathname);
         if (
             candidatePath.startsWith(publicDir) &&
             fs.existsSync(candidatePath) &&
-            fs.statSync(candidatePath).isFile()
+            fs.statSync(candidatePath).isFile() &&
+            !candidatePath.endsWith('.js') // Avoid serving backend .js files if flat
         ) {
             const ext = path.extname(candidatePath).toLowerCase();
             res.writeHead(200, {
@@ -125,9 +152,9 @@ if (require.main === module) {
         .then(({ server, dbPath }) => {
             server.listen(port, '0.0.0.0', () => {
                 console.log(`=========================================================`);
-                console.log(`  LEARNITY — The Lively Teaching Project (v3.0 Ecosystem)`);
-                console.log(`  Server listening on: http://localhost:${port}`);
-                console.log(`  Persistent SQLite DB: ${dbPath}`);
+                console.log(`  LEARNITY — The Lively Teaching Project (v3.1 Ecosystem)`);
+                console.log(`  Server listening on: http://0.0.0.0:${port}`);
+                console.log(`  Persistent Database: ${dbPath}`);
                 console.log(`=========================================================`);
             });
         })
